@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>产程图</title>
+    <style>
+        canvas {
+            border: 1px solid #000;
+        }
+        .top-font-padding {
+            padding-left: 20px;
+        }
+        .hospital-name{
+            font-size: 19px;
+        }
+        .parturition-chart-title{
+            font-size: 19px;
+            margin-bottom: 5px;
+            margin-top: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <div style="text-align: center;">
+        <div class="hospital-name">XXX妇女儿童医院</div>
+        <div class="parturition-chart-title">产程图</div>
+        <canvas width="700" height="760" id="diagram"></canvas>
+    </div>
+    <script>
+        var ctx = document.getElementById("diagram").getContext('2d');
+        /*画布的大小*/
+        var canvasWidth = this.ctx.canvas.width;
+        var canvasHeight = this.ctx.canvas.height;
+        /*网格的大小*/
+        var gridSize = 25;
+        var x1 = 50;
+        var y1 = 25;
+        /*绘制点*/
+        var dottedSize = 6;
+        var name = "测试" //姓名
+        var age = 25//年龄
+        var numberBirth = 2//孕产次
+        var bedNo="703"//床号
+        var medicalRecordNo = "1000036"//日期
+        var deliveryProcessHours = 6 //产程小时
+        window.onload = function () {
+            this.init();
+        }
+
+        /*2.行为方法*/
+        function init() {
+            //记录数据
+            let recordData = [
+                { hour: 8, inspectTime: "2020-07-08 16:00", gjkd: 3, ttxj: -2.5, systolicPressure: 110, diastolicPressure: 70, contractionsTime: "25", contractionsTimes: "4", fetalHeart: "145", processRecord: "持续母婴监护", autograph: "张三" },
+                { hour: 9, inspectTime: "2020-07-08 17:00", gjkd: 4, ttxj: -1.5, systolicPressure: "", diastolicPressure: "", contractionsTime: "25", contractionsTimes: "4", fetalHeart: "145", processRecord: "催产4mex/分", autograph: "张三" },
+                { hour: 11, inspectTime: "2020-07-08 18:00", gjkd: 9, ttxj: 1, systolicPressure: 110, diastolicPressure: 70, contractionsTime: "25-30", contractionsTimes: "4", fetalHeart: "145", processRecord: "彭丽医生行人工破膜、羊水清亮量约80ml", autograph: "张三" },
+                { hour: 12, inspectTime: "2020-07-08 19:00", gjkd: 10, ttxj: 2, systolicPressure: "", diastolicPressure: "", contractionsTime: "30-35", contractionsTimes: "2-3", fetalHeart: "145", processRecord: "", autograph: "张三" },
+                { hour: 13, inspectTime: "2020-07-08 20:00", gjkd: 10, ttxj: 2, systolicPressure: 110, diastolicPressure: 70, contractionsTime: "25", contractionsTimes: "4", fetalHeart: "145", processRecord: "持续母婴监护", autograph: "张三" },
+            ]
+            /*3.宫颈开大初始化*/
+            const cervixData = [
+                {
+                    x: 1,
+                    y: 2.5
+                },
+                {
+                    x: 6,
+                    y: 3
+                },
+                {
+                    x: 9,
+                    y: 6
+                },
+                {
+                    x: 11,
+                    y: 7
+                },
+                {
+                    x: 12,
+                    y: 10
+                }
+            ];
+            /*3.胎头下降初始化*/
+            const fetalHeadData = [
+                {
+                    x: 1,
+                    y: -4
+                },
+                {
+                    x: 6,
+                    y: -3
+                },
+                {
+                    x: 9,
+                    y: 0
+                },
+                {
+                    x: 11,
+                    y: +1
+                },
+                {
+                    x: 12,
+                    y: +2
+                },
+                {
+                    x: 13,
+                    y: +5
+                }
+            ];
+            this.drawGrid()
+            this.drawDotted(recordData, fetalHeadData)
+            this.fixedText()
+            this.recordData(recordData)
+        }
+        //固定显示文字
+        function fixedText() {
+            //头部信息
+            this.ctx.beginPath()
+            this.ctx.font = "13px 宋体"
+            this.ctx.fillText('姓名：', 50, 16);
+            this.ctx.fillText(this.name, 85, 17);
+            this.ctx.fillText('年龄：', 180, 17);
+            this.ctx.fillText(this.age, 215, 17);
+            this.ctx.fillText('孕产次：', 305, 17);
+            this.ctx.fillText(this.numberBirth, 352, 17);  
+            this.ctx.fillText('床号：', 415, 17);
+            this.ctx.fillText(this.bedNo, 448, 17);
+            this.ctx.fillText('病案号：', 540, 17);
+            this.ctx.fillText(this.medicalRecordNo, 590, 17);
+            //胎儿娩出时间
+            this.ctx.fillText("胎儿娩出时间：", 440, 314);
+            this.ctx.fillText("2020-07-09 16:40", 530, 314);
+            /*产程曲线——begin*/
+            //左边文字
+            this.drawTextVertical(this.ctx, "宫颈扩张厘米", 4, 33, 20, 100)
+            this.ctx.beginPath();
+            this.ctx.fillStyle = "red";
+            this.ctx.fillText('◯', 8, 125);
+            this.ctx.closePath();
+            this.ctx.beginPath();
+            this.ctx.fillStyle = "black";
+            this.drawTextVertical(this.ctx, "红色标记", 4, 130, 20, 100)
+            //左边y轴坐标（宫颈开大）          
+            let yAxis = 279
+            for (let i = 0; i < 10; i++) {
+                this.ctx.fillText(i, 38, yAxis)
+                yAxis -= 25
+            }
+            this.ctx.fillText('10', 31, 34);
+            //右边y轴坐标（胎头下降）
+            this.ctx.fillText('+5', 653, 34);
+            this.ctx.fillText('+4', 653, 54);
+            this.ctx.fillText('+3', 653, 79);
+            this.ctx.fillText('+2', 653, 104);
+            this.ctx.fillText('+1', 653, 129);
+            this.ctx.fillText('0', 653, 154);
+            this.ctx.fillText('-1', 653, 179);
+            this.ctx.fillText('-2', 653, 204);
+            this.ctx.fillText('-3', 653, 229);
+            this.ctx.fillText('-4', 653, 254);
+            this.ctx.fillText('-5', 653, 279);
+            //右边文字
+            this.drawTextVertical(this.ctx, "先露下降", 676, 35, 20, 100)
+            this.ctx.beginPath();
+            this.ctx.fillStyle = "blue";
+            this.ctx.fillText('×', 680, 99);
+            this.ctx.closePath();
+            this.ctx.beginPath();
+            this.ctx.fillStyle = "black";
+            this.drawTextVertical(this.ctx, "蓝色标记", 676, 100, 20, 100)
+            //x轴
+            let xAxis = 71
+            for (let i = 1; i <= 24; i++) {
+                this.ctx.fillText(i, xAxis, 287);
+                switch (i) {
+                    case 9:
+                        xAxis += 21
+                        break
+                    case 23:
+                        xAxis += 19
+                        break
+                    default:
+                        xAxis += 25
+                }
+            }
+            this.ctx.closePath()
+            this.ctx.beginPath()
+            this.ctx.font = "12px 宋体"
+            /*产程曲线——end*/
+            //产程小时
+            this.ctx.fillText('产程小时', 1, 292);
+            this.ctx.closePath()
+            /*附属表格——begin*/
+            //左边文字
+            this.ctx.beginPath()
+            this.ctx.font = "12px 宋体"
+            this.ctx.fillText("检查时间", 1, 342);
+            this.ctx.fillText("血压", 10, 360)
+            this.ctx.fillText("(mmHg)", 5, 372)
+            this.ctx.fillText("胎心", 12, 385)
+            this.ctx.fillText("(次/分)", 5, 397)
+            this.ctx.fillText("宫缩", 12, 420)
+            this.ctx.fillText("(秒/分)", 5, 432)
+            this.ctx.fillText("处", 16, 520)
+            this.ctx.fillText("理", 16, 560)
+            this.ctx.fillText("记", 16, 600)
+            this.ctx.fillText("录", 16, 640)
+            this.ctx.fillText("签", 16, 723)
+            this.ctx.fillText("名", 16, 743)
+            this.ctx.closePath()
+            //血压、宫缩斜线
+            this.ctx.beginPath()
+            this.ctx.font = "26px 宋体"
+            let value = 49
+            for (let i = 0; i < 24; i++) {
+                this.ctx.fillText("╱", value, 372)
+                this.ctx.fillText("╱", value, 437)
+                value += 25
+            }
+            this.ctx.closePath()
+            /*附属表格——end*/
+        }
+        //格式化时间"hh-dd"
+        function formatDate(date) {
+            const dateFormat = new Date(date)
+            const resDate = this.p((dateFormat.getMonth() + 1)) + '-' + this.p(dateFormat.getDate())
+            return resDate
+        }
+        function p(s) {
+            return s < 10 ? '0' + s : s
+        }
+        //格式化时间"hh:ss"
+        function formatDatetime(date) {
+            const dateFormat = new Date(date)
+            const resDatetime = this.p((dateFormat.getHours())) + ':' + this.p(dateFormat.getMinutes())
+            return resDatetime
+        }
+        //记录数据显示
+        function recordData(data) {
+            let inspectX = 50 //检查时间x开始坐标
+            let systolicX = 50 //收缩压x轴开始坐标
+            let diastolicX = 62 //舒张压压x轴开始坐标
+            let contractionsTimeX = 50 //宫缩时间x轴开始坐标
+            let contractionsTimesX = 57 //宫缩次数x轴开始坐标
+            let fetalHeartX = 54 //胎心x轴开始坐标
+            let processRecordX = 57 //处理记录x轴开始坐标
+            let autographX = 52 //签名x轴开始坐标
+
+            //for (let i = 0; i < 24; i++) {
+            data.map(item => {
+                //  if (i === item.hour) {
+                this.ctx.beginPath()
+                this.ctx.font = "9px Tahoma"
+                /*数据不为空*/
+                //检查时间            
+                this.ctx.fillText(this.formatDate(item.inspectTime), inspectX, 335)
+                this.ctx.fillText(this.formatDatetime(item.inspectTime), inspectX, 347)
+                //this.ctx.fillText(item.inspectTime, inspectX, 340)
+                //血压
+                this.ctx.fillText(item.systolicPressure, systolicX, 358)
+                this.ctx.fillText(item.diastolicPressure, diastolicX, 372)
+                //宫缩
+                this.ctx.fillText(item.contractionsTime, contractionsTimeX, 413)
+                this.ctx.fillText(item.contractionsTimes, contractionsTimesX, 444)
+                //胎心
+                this.ctx.fillText(item.fetalHeart, fetalHeartX, 390)
+                this.ctx.closePath()
+                this.ctx.beginPath()
+                this.ctx.font = "12px 宋体"
+                //处理记录
+                this.drawTextVertical(this.ctx, item.processRecord, processRecordX, 454, 10, 400)
+                //签名
+                this.drawTextVertical(this.ctx, item.autograph, autographX, 703, 20, 100)
+                this.ctx.closePath()
+                // } else {
+                //     /*数据为空*/
+                //     //检查时间
+                //     this.ctx.fillText("", inspectX, 342)
+                //     //血压
+                //     this.ctx.fillText("", systolicX, 358)
+                //     this.ctx.fillText("", diastolicX, 372)
+                //     //宫缩
+                //     this.ctx.fillText("", contractionsTimeX, 412)
+                //     this.ctx.fillText("", contractionsTimesX, 444)
+                //     //胎心
+                //     this.ctx.fillText("", fetalHeartX, 390)
+                //     //处理记录
+                //     this.drawTextVertical(this.ctx, "", processRecordX, 454, 20, 100)
+                //     //签名
+                //     this.drawTextVertical(this.ctx, "", autographX, 684, 20, 100)
+                // }
+                //每条数据x轴坐标增加25
+                inspectX += 25
+                systolicX += 25
+                diastolicX += 25
+                contractionsTimeX += 25
+                contractionsTimesX += 25
+                fetalHeartX += 25
+                processRecordX += 25
+                autographX += 25
+            })
+
+            // }
+
+        }
+        //检查数据显示
+        function inspectTime() {
+            this.ctx.beginPath()
+            let begin = 49
+            let value = ""
+            //this.ctx.fillStyle = 'blue';
+            this.ctx.font = "10px 宋体"
+            for (let i = 1; i <= 24; i++) {
+                this.inspectData.map(item => {
+                    if (i === item.hour) {
+                        if (i === 1) {
+                            this.ctx.fillText(item.time, begin, 342)
+                        } else {
+                            begin = begin + 25
+                            this.ctx.fillText(item.time, begin, 342)
+                        }
+                    }
+                })
+            }
+            this.ctx.closePath()
+        }
+        // 画竖排文本，从右到左，水平居中，可以水平溢出
+        function drawTextVertical(ctx, text, x, y, width, height, hasStroke = false) {
+            let [oldAlign, oldBaseLine] = [ctx.textAlign, ctx.textBaseline];
+            [ctx.textAlign, ctx.textBaseline] = ['center', 'middle']
+            let lineWidth = parseInt(ctx.font) // ctx.font必须以'XXpx'开头
+
+            // 计算每个字符的尺寸信息
+            let charInfo = []
+            for (let char of text) {
+                let cInfo = {
+                    char: char,
+                    needsRotation: needsRotation(char) // 中日韩文字不用旋转
+                }
+                if (cInfo.needsRotation) {
+                    [cInfo.width, cInfo.height] = [lineWidth, ctx.measureText(char).width]
+                } else {
+                    [cInfo.width, cInfo.height] = [ctx.measureText(char).width, lineWidth]
+                }
+                charInfo.push(cInfo)
+            }
+
+            // 计算每一列
+            let lineInfo = []
+            let curLine = []
+            let curLineHeight = 0
+            for (let info of charInfo) {
+                if (info.char === '\n' || curLineHeight + info.height > height) {
+                    lineInfo.push({
+                        charInfo: curLine,
+                        height: curLineHeight
+                    })
+                    curLine = info.char === '\n' ? [] : [info]
+                    curLineHeight = info.height
+                } else {
+                    curLine.push(info)
+                    curLineHeight += info.height
+                }
+            }
+            lineInfo.push({
+                charInfo: curLine,
+                height: curLineHeight
+            })
+
+            // 逐字画文本
+            let lineX = x + (width + lineWidth * lineInfo.length) / 2 - lineWidth / 2 // 列中心的坐标
+            for (let lInfo of lineInfo) {
+                let charY // 字符顶端的坐标
+                if (oldAlign === 'center') {
+                    charY = y + (height - lInfo.height) / 2
+                } else if (oldAlign === 'right') { // 这里右对齐视为底端对齐，左对齐视为顶端对齐
+                    charY = y + height - lInfo.height
+                } else {
+                    charY = y
+                }
+
+                // 画一列文本
+                for (let cInfo of lInfo.charInfo) {
+                    ctx.translate(lineX, charY + cInfo.height / 2)
+                    if (cInfo.needsRotation) {
+                        ctx.rotate(90 * Math.PI / 180)
+                    }
+                    // 画一个字符
+                    if (hasStroke) {
+                        ctx.strokeText(cInfo.char, 0, 0)
+                    }
+                    ctx.fillText(cInfo.char, 0, 0)
+                    ctx.setTransform(1, 0, 0, 1, 0, 0)
+                    charY += cInfo.height
+                }
+                lineX -= lineWidth
+            }
+
+            [ctx.textAlign, ctx.textBaseline] = [oldAlign, oldBaseLine]
+        }
+        function needsRotation(char) {
+            let codePoint = char.codePointAt(0)
+            for (let [lowerBound, upperBound] of NO_ROTATION_RANGE) {
+                if (lowerBound <= codePoint && codePoint <= upperBound) {
+                    return false
+                }
+            }
+            return true
+        }
+        // 需要旋转的Unicode码范围，基本上是CJK文字
+        const NO_ROTATION_RANGE = [
+            [0x2E80, 0x2FEF],
+            [0x3040, 0x9FFF],
+            [0xAC00, 0xD7FF],
+            [0xF900, 0xFAFF],
+            [0x1D300, 0x1D35F],
+            [0x20000, 0x2FA1F]
+        ]
+        /*绘制表格*/
+        function drawGrid() {
+            /*x方向的线*/
+            var xLineTotal = Math.floor(this.canvasHeight / this.gridSize);
+            this.ctx.strokeStyle = '#000';
+            //产程曲线x轴
+            for (var i = 0; i <= xLineTotal - 19; i++) {
+                this.ctx.beginPath();
+                if (i > 1 && i < 13) {
+                    this.ctx.moveTo(50, i * this.gridSize - 0.5);
+                    this.ctx.lineTo(this.canvasWidth - 50, i * this.gridSize - 0.5);
+                } else {
+                    this.ctx.moveTo(0, i * this.gridSize - 0.5);
+                    this.ctx.lineTo(this.canvasWidth, i * this.gridSize - 0.5);
+                }
+                this.ctx.stroke();
+            }
+            //附属表格x轴
+            for (var i = 13; i <= xLineTotal - 1; i++) {
+                this.ctx.beginPath();
+                if (i === 17 || (i > 18 && i < 28) || (i > 28 && i < 30)) {
+                    this.ctx.moveTo(0, i * this.gridSize - 0.5);
+                } else {
+                    this.ctx.moveTo(0, i * this.gridSize - 0.5);
+                    this.ctx.lineTo(this.canvasWidth - 50, i * this.gridSize - 0.5);
+                }
+                this.ctx.stroke();
+            }
+            /*y方向的线*/
+            var yLineTotal = Math.floor(this.canvasWidth / this.gridSize);
+            //附属表格y轴
+            for (var i = 1; i <= yLineTotal; i++) {
+                if (i !== 1 && i !== 28 && i !== 27) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(i * this.gridSize - 0.5, 325);
+                    this.ctx.lineTo(i * this.gridSize - 0.5, this.canvasHeight);
+                    this.ctx.stroke();
+                    this.ctx.closePath();
+                }
+            }
+
+            //产程曲线y轴
+            for (var i = 0; i <= yLineTotal; i++) {
+                if (i !== 1 && i !== 28 && i !== 27) {
+                    this.ctx.beginPath();
+                    this.ctx.moveTo(i * this.gridSize - 0.5, 25);
+                    if (i === 2 || i === 26) {
+                        //y轴左边竖线
+                        this.ctx.lineTo(i * this.gridSize - 0.5, this.canvasHeight - 425);
+                    } else {
+                        this.ctx.lineTo(i * this.gridSize - 0.5, this.canvasHeight - 485);
+                    }
+                    this.ctx.stroke();
+                    this.ctx.closePath();
+                }
+            }
+        }
+        /*绘制宫颈扩张、先露下降曲线*/
+        function drawDotted(recordData, fetalHeadData) {
+            var that = this;
+            //宫颈开大x、y轴开始坐标
+            let cervixX = 50;
+            let cervixY = 274;
+            let y0 = 274//y轴开始坐标
+            //胎心下降x、y轴开始坐标
+            let fetalHeadX = 50;
+            let fetalHeadY = 274;
+            let y1 = 274
+            //记录宫颈开大当前坐标
+            let prevCervixX = 0;
+            let prevCervixY = 0;
+            //记录胎心下降当前坐标
+            let prevFetalHeadX = 0
+            let prevFetalHeadY = 0
+            //开始坐标(0,0)
+            // let prevCervixX = cervixX;
+            // let prevCervixY = cervixY;
+            //let prevFetalHeadX = fetalHeadX
+            //let prevFetalHeadY = fetalHeadY
+ 
+            for (let j = 0; j < 24; j++) {
+                //宫颈扩张
+                recordData.forEach((item,key) => {
+                    if (j === item.hour) {
+                        if (key === 0) {
+                            prevCervixX = cervixX
+                            cervixY = y0 - item.gjkd * 25;
+                            prevCervixY = cervixY
+                        } else {
+                            cervixY = y0 - item.gjkd * 25;
+                        }                  
+                        that.ctx.beginPath();
+                        that.ctx.strokeStyle = "red"
+                        that.ctx.arc(cervixX, cervixY, 3, 0, 2 * Math.PI)
+                        that.ctx.stroke();
+                        that.ctx.moveTo(prevCervixX, prevCervixY);
+                        that.ctx.lineTo(cervixX, cervixY);
+                        that.ctx.stroke();
+                        that.ctx.closePath()
+                        prevCervixX = cervixX;
+                        prevCervixY = cervixY;   
+                    }           
+                })
+                //先露下降
+                recordData.forEach((item,key) => {
+                    if (j === item.hour) {
+                        if(key===0){
+                            prevFetalHeadX=fetalHeadX
+                            fetalHeadY=y1 - (item.ttxj+5) * 25;
+                            prevFetalHeadY=fetalHeadY
+                        }else{
+                            fetalHeadY=y1 - (item.ttxj+5) * 25;
+                        }
+                        fetalHeadY=y1 - (item.ttxj+5) * 25;
+                        that.ctx.beginPath();
+                        that.ctx.moveTo(fetalHeadX - that.dottedSize / 2, fetalHeadY - that.dottedSize / 2);
+                        that.ctx.strokeStyle = "blue"
+                        that.ctx.lineCap = "round";
+                        that.ctx.font="10px 宋体"
+                        that.ctx.strokeText("×", (fetalHeadX - 6) + that.dottedSize / 4, (fetalHeadY + 6) - that.dottedSize / 3, 20);
+                        that.ctx.stroke();
+                        that.ctx.beginPath();
+                        that.ctx.strokeStyle = "blue"
+                        that.ctx.moveTo(prevFetalHeadX, prevFetalHeadY);
+                        that.ctx.lineTo(fetalHeadX, fetalHeadY);
+                        that.ctx.stroke();
+                        that.ctx.closePath()
+                        prevFetalHeadX = fetalHeadX;
+                        prevFetalHeadY = fetalHeadY;
+                    }
+                })
+                fetalHeadX += 25
+                cervixX += 25
+            }
+        }
+    </script>
+</body>
+
+</html>

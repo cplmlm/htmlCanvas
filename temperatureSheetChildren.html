@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>体温单</title>
+    <style>
+        canvas {
+            border: 1px solid #000;
+        }
+
+        .top-font-padding {
+            padding-left: 20px;
+        }
+
+        .hospital-name {
+            font-size: 19px;
+        }
+
+        .parturition-chart-title {
+            font-size: 19px;
+            margin-bottom: 5px;
+            margin-top: 5px;
+        }
+
+        .temperature-button {
+            display: flex;
+            flex-direction: row-reverse;
+            padding-right: 36%;
+        }
+
+        .temperature-button-spacing {
+            padding-left: 10px;
+        }
+        .temperature-red{
+            color: red
+        }
+        .temperature-blue{
+            color: blue
+        }
+
+        /*去除页面页脚*/
+        @page {
+            margin: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="temperature-button">
+        <div onclick="pageUp()" id="pageUp" class="temperature-button-spacing">上一页</div>
+        <div onclick="pageDown()" id="pageDown" class="temperature-button-spacing">下一页</div>
+        <div onclick="doPrint()" id="print" class="temperature-button-spacing">打印</div>
+    </div>
+    <div style="text-align: center;">
+        <div id="print">
+            <div class="hospital-name">XXX妇女儿童医院</div>
+            <div class="parturition-chart-title">体温单</div>
+            <canvas width="540" height="780" id="temperatureSheet"></canvas>
+            <div>备注：脉搏<span class="temperature-red">●</span> 心率<span  class="temperature-red">○</span> 疼痛<span class="temperature-red">▲</span>
+                体温<span class="temperature-blue"> ×</span> 降温后半小时<span  class="temperature-red"> ----○ </span>呼吸<span class="temperature-blue">●</span></div>
+            <div id="page"></div>
+        </div>
+    </div>
+    </div>
+    <script>
+        var ctx = document.getElementById("temperatureSheet").getContext('2d');
+        /*画布的大小*/
+        var canvasWidth = this.ctx.canvas.width;
+        var canvasHeight = this.ctx.canvas.height;
+        var show = 0
+        /*大网格x轴距离*/
+        var gridSize = 60;
+        /*大网格y轴距离*/
+        var gridSizeY = 20;
+        /*大网格的大小*/
+        var smallGridSize = 10;
+        /*坐标系的间距*/
+        var space = 20;
+        var x1 = 50;
+        var y1 = 25;
+        /*箭头的大小*/
+        var arrowSize = 10;
+        /*绘制点*/
+        var dottedSize = 6;
+        var lengthStay = 0
+        var operationDays = 0
+        /*点的坐标 和数据有关系 数据可视化*/
+        var day = 0
+        var newDate = ""
+        var index = 0
+        var size = 7
+        var name = "测试" //姓名
+        var age = 25//年龄
+        var numberBirth = 2//孕产次
+        var date = "2020年7月20日"//日期
+        var deliveryProcessHours = 6 //产程小时
+        var data = [
+            {
+                date: "2020-12-25", type: "入院", typeDate: "01:35", day: 1, dayAfterOperation: "", stoolFrequency: "1", bloodPressureAm: "120/88", bloodPressurePm: "120/89", urineOutput: 2000, input: 1000, output: 1000, high: "177", weight: "77", allergyHistory: "注射用头孢颗粒",
+                timeInterval: [{ time: "02:00", breath: "45", pulse: "62", temperature: "36", painScore: 2 }, { time: "06:00", breath: "46", pulse: "74", temperature: "36.6", painScore: 5 },
+                { time: "18:00", breath: "18", pulse: "74", temperature: "37", painScore: 3 }, { time: "22:00", breath: "16", pulse: "75", temperature: "36.8", painScore: 4 }]
+            },
+            {
+                date: "2020-12-26", type: "手术", typeDate: "12:45", day: 2, dayAfterOperation: "", stoolFrequency: "1", bloodPressureAm: "120/81", bloodPressurePm: "", urineOutput: 2000, input: 1000, output: 1000, high: "", weight: "", allergyHistory: "",
+                timeInterval: [{ time: "02:00", breath: "15", pulse: "70", temperature: "36.6", painScore: 4 }, { time: "06:00", breath: "15", pulse: "73", temperature: "36.8", painScore: 4 },
+                { time: "14:00", breath: "16", pulse: "73", temperature: "36.6", painScore: 5 },
+                { time: "18:00", breath: "18", pulse: "74", temperature: "36.5", painScore: 4 }, { time: "22:00", breath: "17", pulse: "75", temperature: "36.6", painScore: 3 }]
+            },
+            {
+                date: "2020-12-27", type: "", typeDate: "", day: 3, dayAfterOperation: 1, stoolFrequency: "2", bloodPressureAm: "", bloodPressurePm: "120/80", urineOutput: 2000, input: 1000, output: 1000, high: "", weight: "", allergyHistory: "",
+                timeInterval: [{ time: "02:00", breath: "17", pulse: "70", temperature: "36.6", painScore: 0 }, { time: "06:00", breath: "15", pulse: "73", temperature: "36.8", painScore: 0 },
+                { time: "10:00", breath: "17", pulse: "76", temperature: "36.8", painScore: 5 }, { time: "14:00", breath: "16", pulse: "73", temperature: "36.6", painScore: 0 },
+                { time: "18:00", breath: "18", pulse: "74", temperature: "36.5", painScore: 0 }, { time: "22:00", breath: "15", pulse: "75", temperature: "36.6", painScore: 6 }]
+            },
+            {
+                date: "2020-12-28", type: "", typeDate: "", day: 4, dayAfterOperation: 2, stoolFrequency: "1", bloodPressureAm: "120/83", bloodPressurePm: "", urineOutput: 2000, input: 1000, output: 1000, high: "", weight: "", allergyHistory: "",
+                timeInterval: [
+                    { time: "10:00", breath: "17", pulse: "76", temperature: "36.8", painScore: 0 }, { time: "14:00", breath: "15", pulse: "73", temperature: "36.6", painScore: 0 },
+                    { time: "18:00", breath: "18", pulse: "74", temperature: "36.5", painScore: 3 }, { time: "22:00", breath: "16", pulse: "75", temperature: "36.6", painScore: 0 }]
+            },
+            {
+                date: "2020-12-29", type: "", typeDate: "", day: 4, dayAfterOperation: 2, stoolFrequency: "1", bloodPressureAm: "120/83", bloodPressurePm: "", urineOutput: 2000, input: 1000, output: 1000, high: "", weight: "", allergyHistory: "",
+                timeInterval: [
+                    { time: "10:00", breath: "17", pulse: "76", temperature: "36.8", painScore: 0 }, { time: "14:00", breath: "15", pulse: "73", temperature: "36.6", painScore: 0 },
+                    { time: "18:00", breath: "18", pulse: "74", temperature: "36.5", painScore: 3 }, { time: "22:00", breath: "16", pulse: "75", temperature: "36.6", painScore: 0 }]
+            },
+            {
+                date: "2020-12-30", type: "", typeDate: "", day: 4, dayAfterOperation: 2, stoolFrequency: "1", bloodPressureAm: "120/83", bloodPressurePm: "", urineOutput: 2000, input: 1000, output: 1000, high: "", weight: "", allergyHistory: "",
+                timeInterval: [
+                    { time: "10:00", breath: "17", pulse: "76", temperature: "36.8", painScore: 0 }, { time: "14:00", breath: "15", pulse: "73", temperature: "36.6", painScore: 0 },
+                    { time: "18:00", breath: "18", pulse: "74", temperature: "36.5", painScore: 3 }, { time: "22:00", breath: "16", pulse: "75", temperature: "36.6", painScore: 0 }]
+            },
+            {
+                date: "2020-12-31", type: "", typeDate: "", day: 4, dayAfterOperation: 2, stoolFrequency: "1", bloodPressureAm: "120/83", bloodPressurePm: "", urineOutput: 2000, input: 1000, output: 1000, high: "", weight: "", allergyHistory: "",
+                timeInterval: [
+                    { time: "10:00", breath: "17", pulse: "76", temperature: "36.8", painScore: 0 }, { time: "14:00", breath: "15", pulse: "73", temperature: "36.6", painScore: 0 },
+                    { time: "18:00", breath: "18", pulse: "74", temperature: "36.5", painScore: 3 }, { time: "22:00", breath: "16", pulse: "75", temperature: "36.6", painScore: 0 }]
+            },
+            {
+                date: "2021-01-01", type: "", typeDate: "", day: 4, dayAfterOperation: 2, stoolFrequency: "1", bloodPressureAm: "120/83", bloodPressurePm: "", urineOutput: 2000, input: 1000, output: 1000, high: "", weight: "", allergyHistory: "",
+                timeInterval: [
+                    { time: "10:00", breath: "17", pulse: "76", temperature: "36.8", painScore: 3 }, { time: "14:00", breath: "15", pulse: "73", temperature: "36.6", painScore: 0 },
+                    { time: "18:00", breath: "18", pulse: "74", temperature: "36.5", painScore: 3 }, { time: "22:00", breath: "16", pulse: "75", temperature: "36.6", painScore: 0 }]
+            },
+            {
+                date: "2021-01-02", type: "", typeDate: "", day: 4, dayAfterOperation: 2, stoolFrequency: "1", bloodPressureAm: "120/83", bloodPressurePm: "", urineOutput: 2000, input: 1000, output: 1000, high: "", weight: "", allergyHistory: "",
+                timeInterval: [
+                    { time: "10:00", breath: "17", pulse: "76", temperature: "36.8", painScore: 0 }, { time: "14:00", breath: "15", pulse: "73", temperature: "36.6", painScore: 0 },
+                    { time: "18:00", breath: "18", pulse: "74", temperature: "36.5", painScore: 3 }, { time: "22:00", breath: "16", pulse: "75", temperature: "36.6", painScore: 0 }]
+            },
+            {
+                date: "2021-01-03", type: "出院", typeDate: "12:45", day: 4, dayAfterOperation: 2, stoolFrequency: "1", bloodPressureAm: "120/83", bloodPressurePm: "", urineOutput: 2000, input: 1000, output: 1000, high: "", weight: "", allergyHistory: "",
+                timeInterval: [
+                    { time: "10:00", breath: "17", pulse: "76", temperature: "36.8", painScore: 0 }, { time: "14:00", breath: "15", pulse: "73", temperature: "36.6", painScore: 0 },
+                    { time: "18:00", breath: "18", pulse: "74", temperature: "36.5", painScore: 3 }, { time: "22:00", breath: "16", pulse: "75", temperature: "36.6", painScore: 0 }]
+            },
+            {
+                date: "2021-01-04", type: "出院", typeDate: "12:45", day: 4, dayAfterOperation: 2, stoolFrequency: "1", bloodPressureAm: "120/83", bloodPressurePm: "", urineOutput: 2000, input: 1000, output: 1000, high: "", weight: "", allergyHistory: "",
+                timeInterval: [
+                    { time: "10:00", breath: "17", pulse: "76", temperature: "36.8", painScore: 0 }, { time: "14:00", breath: "15", pulse: "73", temperature: "36.6", painScore: 0 },
+                    { time: "18:00", breath: "18", pulse: "74", temperature: "36.5", painScore: 3 }, { time: "22:00", breath: "16", pulse: "75", temperature: "36.6", painScore: 0 }]
+            },
+            {
+                date: "2021-01-05", type: "出院", typeDate: "12:45", day: 4, dayAfterOperation: 2, stoolFrequency: "1", bloodPressureAm: "120/83", bloodPressurePm: "", urineOutput: 2000, input: 1000, output: 1000, high: "", weight: "", allergyHistory: "",
+                timeInterval: [
+                    { time: "10:00", breath: "17", pulse: "76", temperature: "36.8", painScore: 0 }, { time: "14:00", breath: "15", pulse: "73", temperature: "36.6", painScore: 0 },
+                    { time: "18:00", breath: "18", pulse: "74", temperature: "36.5", painScore: 3 }, { time: "22:00", breath: "16", pulse: "75", temperature: "36.6", painScore: 0 }]
+            },
+            {
+                date: "2021-01-06", type: "出院", typeDate: "12:45", day: 4, dayAfterOperation: 2, stoolFrequency: "1", bloodPressureAm: "120/83", bloodPressurePm: "", urineOutput: 2000, input: 1000, output: 1000, high: "", weight: "", allergyHistory: "",
+                timeInterval: [
+                    { time: "10:00", breath: "17", pulse: "76", temperature: "36.8", painScore: 0 }, { time: "14:00", breath: "15", pulse: "73", temperature: "36.6", painScore: 0 },
+                    { time: "18:00", breath: "18", pulse: "74", temperature: "36.5", painScore: 3 }, { time: "22:00", breath: "16", pulse: "75", temperature: "36.6", painScore: 0 }]
+            },
+            {
+                date: "2021-01-07", type: "出院", typeDate: "12:45", day: 4, dayAfterOperation: 2, stoolFrequency: "1", bloodPressureAm: "120/83", bloodPressurePm: "", urineOutput: 2000, input: 1000, output: 1000, high: "", weight: "", allergyHistory: "",
+                timeInterval: [
+                    { time: "10:00", breath: "17", pulse: "76", temperature: "36.8", painScore: 0 }, { time: "14:00", breath: "15", pulse: "73", temperature: "36.6", painScore: 0 },
+                    { time: "18:00", breath: "18", pulse: "74", temperature: "36.5", painScore: 3 }, { time: "22:00", breath: "16", pulse: "75", temperature: "36.6", painScore: 0 }]
+            },
+        ]
+        window.onload = function () {
+            this.init();
+        }
+        /*2.行为方法*/
+        function init() {
+            //记录数据
+            this.drawGrid()
+            this.fixedText()
+            let dataPage = []
+            this.data.map((item, key) => {
+                if (key >= this.index && key < this.size) {
+                    dataPage.push(item)
+                }
+            })
+            const page = this.index + 1
+            document.getElementById("page").innerText = "第" + page + "页"
+            this.recordData(dataPage)
+            this.drawDotted(dataPage)
+        }
+        //固定显示文字
+        function fixedText() {
+            //顶部文字
+            this.ctx.beginPath()
+            this.ctx.font = "12px 宋体"
+            this.ctx.fillText("日期", 50, 15)
+            this.ctx.fillText("住院天数", 38, 34)
+            this.ctx.fillText("手术（分娩）后天数", 6, 54)
+            this.ctx.closePath()
+            //中间左边文字（呼吸、脉搏、体温、时间）
+            //时间
+            this.ctx.beginPath()
+            this.ctx.font = "12px 宋体"
+            this.ctx.fillText('时间', 50, 74);
+            // 呼吸、脉搏、体温刻度值
+            this.ctx.fillText("呼吸", 8, 92)
+            this.ctx.fillText("(次/分)", -2, 107)
+            this.ctx.fillText("脉搏", 48, 92)
+            this.ctx.fillText("(次/分)", 38, 107)
+            this.ctx.fillText("体温℃", 82, 92)
+            let yAxis = 133
+            let breath = 80
+            let pulse = 230
+            let temperature = 41
+            for (let i = 0; i < 8; i++) {
+                this.ctx.fillText(breath, 15, yAxis)
+                this.ctx.fillText(pulse, 55, yAxis)
+                this.ctx.fillText(temperature, 95, yAxis)
+                breath -= 10
+                pulse -= 30
+                temperature -= 1
+                if (i === 6) {
+                    yAxis += 45
+                } else {
+                    yAxis += 50
+                }
+            }
+            this.ctx.closePath()
+            //时间x轴第一列开始坐标
+            let first = 122, two = 132, three = 140, four = 150, five = 160, six = 170
+            //每天测量时间
+            for (let i = 0; i <= 7; i++) {
+                this.ctx.font = "8px Tahoma"
+                this.ctx.fillStyle = "red";
+                this.ctx.fillText("2", first, 73)
+                this.ctx.fillText("6", two, 73)
+                this.ctx.fillText("22", six, 73)
+                this.ctx.closePath()
+                this.ctx.beginPath()
+                this.ctx.fillStyle = "black";
+                this.ctx.fillText("10", three, 73)
+                this.ctx.fillText("14", four, 73)
+                this.ctx.fillText("18", five, 73)
+                this.ctx.closePath()
+                //x轴移动
+                first += 60
+                two += 60
+                three += 60
+                four += 60
+                five += 60
+                six += 60
+            }
+            //疼痛评分
+            this.ctx.beginPath()
+            this.ctx.font = "12px 宋体"
+            this.drawTextVertical(this.ctx, "疼痛评分", 90, 485, 10, 100)
+            this.ctx.closePath()
+            this.ctx.beginPath()
+            this.ctx.font = "8px Tahoma"
+            this.ctx.fillText("0", 112, 539)
+            this.ctx.fillText("2", 112, 532)
+            this.ctx.fillText("4", 112, 523)
+            this.ctx.fillText("6", 112, 513)
+            this.ctx.fillText("8", 112, 502)
+            this.ctx.fillText("10", 109, 492)
+            this.ctx.closePath()
+            //底部文字
+            this.ctx.beginPath()
+            this.ctx.font = "12px 宋体"
+            this.ctx.fillText("血压（mmHg）", 12, 554)
+            this.ctx.fillText("大便次数（次/日）", 12, 574)
+            this.ctx.fillText("尿量（ml）", 12, 594)
+            this.ctx.fillText("总入量（ml）", 12, 614)
+            this.ctx.fillText("总出量（ml）", 12, 634)
+            this.ctx.fillText("体重（kg）", 12, 654)
+            this.ctx.fillText("身高（cm）", 12, 674)
+            this.ctx.fillText("过敏史", 12, 694)
+            this.ctx.closePath()
+        }
+        //格式化时间"yyyy-hh-dd"
+        function formatYearMonthDate(date) {
+            const dateFormat = new Date(date)
+            const resDate = dateFormat.getFullYear() + "-" + this.p((dateFormat.getMonth() + 1)) + '-' + this.p(dateFormat.getDate())
+            return resDate
+        }
+        //格式化时间"hh-dd"
+        function formatMonthDate(date) {
+            const dateFormat = new Date(date)
+            const resDate = this.p((dateFormat.getMonth() + 1)) + '-' + this.p(dateFormat.getDate())
+            return resDate
+        }
+        //格式化时间"dd"
+        function formatDate(date) {
+            const dateFormat = new Date(date)
+            const resDate = this.p(dateFormat.getDate())
+            return resDate
+        }
+        function p(s) {
+            return s < 10 ? '0' + s : s
+        }
+        //格式化时间"hh:ss"
+        function formatDateTime(date) {
+            const dateFormat = new Date(date)
+            const resDatetime = this.p((dateFormat.getHours())) + ':' + this.p(dateFormat.getMinutes())
+            return resDatetime
+        }
+        //格式化时间"九时十二分"
+        function dateString(date) {
+            let chinese = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
+            let result = [];
+            let hour = date.getHours();
+            switch (true) {
+                case hour < 10:
+                    result.push(chinese[hour])
+                    break
+                case hour < 20:
+                    result.push("十" + chinese[hour % 10])
+                    break
+                case hour < 30:
+                    result.push("二十" + chinese[hour % 10])
+                    break
+            }
+            result.push("时")
+            let minute = date.getMinutes();
+            switch (true) {
+                case minute < 10:
+                    result.push(chinese[minute])
+                    break
+                case minute < 20:
+                    result.push(chinese[minute % 10] === "零" ? "十" : "十" + chinese[minute % 10])
+                    break
+                case minute < 30:
+                    result.push(chinese[minute % 10] === "零" ? "二十" : "二十" + chinese[minute % 10])
+                    break
+                case minute < 40:
+                    result.push(chinese[minute % 10] === "零" ? "三十" : "三十" + chinese[minute % 10])
+                    break
+                case minute < 50:
+                    result.push(chinese[minute % 10] === "零" ? "四十" : "四十" + chinese[minute % 10])
+                    break
+                case minute < 60:
+                    result.push(chinese[minute % 10] === "零" ? "五十" : "五十" + chinese[minute % 10])
+                    break
+            }
+            result.push("分")
+            return result.join('');
+        }
+        //获取日期范围
+        function getDates(startDate, stopDate) {
+            let bd = startDate, be = stopDate;
+            let bd_time = bd.getTime(), be_time = be.getTime(), time_diff = be_time - bd_time;
+            let d_arr = [];
+            for (let i = 0; i <= time_diff; i += 86400000) {
+                const dateFormat = new Date(bd_time + i);
+                d_arr.push(dateFormat.getFullYear() + "-" + this.p((dateFormat.getMonth() + 1)) + '-' + this.p(dateFormat.getDate()))
+            }
+            return d_arr
+        }
+        //上一页
+        function pageUp() {
+            if (this.index !== 0) {
+                this.index--
+                let page = this.index + 1
+                document.getElementById("page").innerText = "第" + page + "页"
+                let begin = this.index * this.size
+                const end = begin + 7
+                let dataPage = []
+                this.data.map((item, key) => {
+                    if (key >= begin && key < end) {
+                        dataPage.push(item)
+                    }
+                })
+                //重绘canvas
+                this.ctx.canvas.width = "540"
+                this.ctx.canvas.height = "780"
+                this.drawGrid()
+                this.fixedText()
+                this.recordData(dataPage)
+                this.drawDotted(dataPage)
+            }
+        }
+        //下一页
+        function pageDown() {
+            let endPage = parseInt(this.data.length / this.size)
+            if (this.data.length % this.size === 0) {
+                endPage -= 1
+            }
+            if (this.index !== endPage) {
+                this.index++
+                const page = this.index + 1
+                let begin = this.index * this.size
+                const end = begin + 7
+                let dataPage = []
+                this.data.map((item, key) => {
+                    if (key >= begin && key < end) {
+                        dataPage.push(item)
+                    }
+                })
+                document.getElementById("page").innerText = "第" + page + "页"
+                //重绘canvas
+                this.ctx.canvas.width = "540"
+                this.ctx.canvas.height = "780"
+                this.drawGrid()
+                this.fixedText()
+                this.recordData(dataPage)
+                this.drawDotted(dataPage)
+            }
+        }
+        /**打印页面*/
+        function doPrint() {
+            document.getElementById("pageUp").style.display = "none"
+            document.getElementById("pageDown").style.display = "none"
+            document.getElementById("print").style.display = "none"
+            // 开始打印
+            window.print();
+            window.location.reload()
+        }
+        //记录数据显示
+        function recordData(data) {
+            //获取每页7天的日期
+            const beginDate = new Date(data[0].date)
+            const endDate = new Date(beginDate)
+            endDate.setDate(beginDate.getDate() + 6)
+            let dateRange = []
+            dateRange = this.getDates(beginDate, endDate)
+            console.log(dateRange)
+            let date = 122 //日期开始x轴坐标
+            let dateSingle = 0
+            let day = 146 //住院天数x轴开始坐标
+            let dayAfterOperation = 146 //手术（分娩）后天数x轴开始坐标
+            let bloodPressureAm = 121 //血压（上午）x轴开始坐标
+            let bloodPressurePm = 151 //血压（下午）x轴开始坐标
+            let stoolFrequency = 146 //大便次数x轴开始坐标
+            let urineOutput = 138 //尿量x轴开始坐标
+            let input = 138 //总入量x轴开始坐标
+            let output = 138 //总出量x轴开始坐标    
+            let weight = 144 //体重x轴开始坐标       
+            let high = 142  //身高x轴开始坐标      
+            let allergyHistory = 142 //过敏史x轴开始坐标
+            let historyDate = ""
+            dateRange.map((itemDate, key) => {
+                this.lengthStay += 1
+                this.ctx.beginPath()
+                this.ctx.font = "11px Tahoma"
+                this.ctx.fillStyle = "black"
+                //日期不同情况显示
+                if (key === 0) {
+                    this.ctx.fillText(itemDate, date, 14)//每页第一个日期
+                } else {
+                    if (itemDate.substring(5, 7) !== historyDate.substring(5, 7)) {
+                        console.log(item.date.substring(5, 7))
+                        this.ctx.fillText(this.formatMonthDate(itemDate), dateSingle - 6, 14)//新的的月份
+                    } else if (itemDate.substring(1, 5) !== historyDate.substring(1, 5)) {
+                        this.ctx.fillText(itemDate, dateSingle - 20, 14)//新的年度
+                    } else {
+                        this.ctx.fillText(this.formatDate(itemDate), dateSingle, 14)//日期天
+                    }
+                }
+                historyDate = itemDate
+                this.ctx.fillText(this.lengthStay, day, 34)//住院天数
+                this.ctx.closePath()
+                //手术（分娩）后天数 
+                if (this.operationDays > 0) {
+                    this.ctx.beginPath()
+                    this.ctx.fillStyle = "red"
+                    this.ctx.fillText(this.operationDays, dayAfterOperation, 54)
+                    this.operationDays += 1
+                    this.ctx.closePath()
+                }
+                data.map((item) => {
+                    if (itemDate === item.date) {
+                        this.ctx.beginPath()
+                        this.ctx.font = "11px Tahoma"
+                        this.ctx.fillStyle = "black"
+                        if (item.type === "手术" || item.type === "分娩") {
+                            this.operationDays = 1
+                        }
+                        this.ctx.beginPath()
+                        this.ctx.font = "8.5px Tahoma"
+                        this.ctx.fillStyle = "black"
+                        this.ctx.fillText(item.bloodPressureAm, bloodPressureAm, 554)//血压（上午）
+                        this.ctx.fillText(item.bloodPressurePm, bloodPressurePm, 554)//血压（下午）
+                        this.ctx.fillText(item.stoolFrequency, stoolFrequency, 574)//大便次数
+                        this.ctx.fillText(item.urineOutput, urineOutput, 594)//尿量
+                        this.ctx.fillText(item.input, input, 614)//总入量
+                        this.ctx.fillText(item.output, output, 634)//总出量
+                        this.ctx.fillText(item.weight, weight, 654)//体重
+                        this.ctx.fillText(item.high, high, 674)//身高
+                        this.ctx.closePath()
+                        this.ctx.beginPath()
+                        this.ctx.font = "11px Tahoma"
+                        this.ctx.fillText(item.allergyHistory, allergyHistory, 694)//过敏史
+                        this.ctx.closePath()
+                    }
+                })
+                date += 60
+                dateSingle = date
+                dateSingle += 20
+                day += 60
+                dayAfterOperation += 60
+                bloodPressureAm += 60
+                bloodPressurePm += 60
+                stoolFrequency += 60
+                urineOutput += 60
+                input += 60
+                output += 60
+                weight += 60
+                high += 60
+                allergyHistory += 60
+            })
+        }
+        // 画竖排文本，从右到左，水平居中，可以水平溢出
+        function drawTextVertical(ctx, text, x, y, width, height, hasStroke = false) {
+            let [oldAlign, oldBaseLine] = [ctx.textAlign, ctx.textBaseline];
+            [ctx.textAlign, ctx.textBaseline] = ['center', 'middle']
+            let lineWidth = parseInt(ctx.font) // ctx.font必须以'XXpx'开头
+
+            // 计算每个字符的尺寸信息
+            let charInfo = []
+            for (let char of text) {
+                let cInfo = {
+                    char: char,
+                    needsRotation: needsRotation(char) // 中日韩文字不用旋转
+                }
+                if (cInfo.needsRotation) {
+                    [cInfo.width, cInfo.height] = [lineWidth, ctx.measureText(char).width]
+                } else {
+                    [cInfo.width, cInfo.height] = [ctx.measureText(char).width, lineWidth]
+                }
+                charInfo.push(cInfo)
+            }
+
+            // 计算每一列
+            let lineInfo = []
+            let curLine = []
+            let curLineHeight = 0
+            for (let info of charInfo) {
+                if (info.char === '\n' || curLineHeight + info.height > height) {
+                    lineInfo.push({
+                        charInfo: curLine,
+                        height: curLineHeight
+                    })
+                    curLine = info.char === '\n' ? [] : [info]
+                    curLineHeight = info.height
+                } else {
+                    curLine.push(info)
+                    curLineHeight += info.height
+                }
+            }
+            lineInfo.push({
+                charInfo: curLine,
+                height: curLineHeight
+            })
+
+            // 逐字画文本
+            let lineX = x + (width + lineWidth * lineInfo.length) / 2 - lineWidth / 2 // 列中心的坐标
+            for (let lInfo of lineInfo) {
+                let charY // 字符顶端的坐标
+                if (oldAlign === 'center') {
+                    charY = y + (height - lInfo.height) / 2
+                } else if (oldAlign === 'right') { // 这里右对齐视为底端对齐，左对齐视为顶端对齐
+                    charY = y + height - lInfo.height
+                } else {
+                    charY = y
+                }
+
+                // 画一列文本
+                for (let cInfo of lInfo.charInfo) {
+                    ctx.translate(lineX, charY + cInfo.height / 2)
+                    if (cInfo.needsRotation) {
+                        ctx.rotate(90 * Math.PI / 180)
+                    }
+                    // 画一个字符
+                    if (hasStroke) {
+                        ctx.strokeText(cInfo.char, 0, 0)
+                    }
+                    ctx.fillText(cInfo.char, 0, 0)
+                    ctx.setTransform(1, 0, 0, 1, 0, 0)
+                    charY += cInfo.height
+                }
+                lineX -= lineWidth
+            }
+
+            [ctx.textAlign, ctx.textBaseline] = [oldAlign, oldBaseLine]
+        }
+        function needsRotation(char) {
+            let codePoint = char.codePointAt(0)
+            for (let [lowerBound, upperBound] of NO_ROTATION_RANGE) {
+                if (lowerBound <= codePoint && codePoint <= upperBound) {
+                    return false
+                }
+            }
+            return true
+        }
+        // 需要旋转的Unicode码范围，基本上是CJK文字
+        const NO_ROTATION_RANGE = [
+            [0x2E80, 0x2FEF],
+            [0x3040, 0x9FFF],
+            [0xAC00, 0xD7FF],
+            [0xF900, 0xFAFF],
+            [0x1D300, 0x1D35F],
+            [0x20000, 0x2FA1F]
+        ]
+        /*绘制表格*/
+        function drawGrid() {
+            /*x方向的线*/
+            const xLineTotal = Math.floor(this.canvasHeight / this.gridSize);
+            this.ctx.strokeStyle = '#000';
+            //上部分x轴
+            for (let i = 0; i <= 3; i++) {
+                this.ctx.beginPath();
+                this.ctx.lineWidth = 1
+                this.ctx.moveTo(0, i * this.gridSizeY - 0.5);
+                this.ctx.lineTo(this.canvasWidth, i * this.gridSizeY - 0.5);
+                this.ctx.stroke();
+                this.ctx.closePath()
+            }
+            //中间部分x轴
+            let blodLine = 8//加粗线条
+            for (let i = 8; i <= 54; i++) {
+                this.ctx.beginPath();
+                if (i === blodLine) {
+                    this.ctx.lineWidth = 1.5
+                    if (i === 48) {
+                        blodLine += 6
+                    } else {
+                        blodLine += 5
+                    }
+                } else {
+                    this.ctx.lineWidth = 1
+                }
+                if (i === 8 || i === 48 || i === 54) {
+                    this.ctx.moveTo(0, i * this.smallGridSize - 0.5);
+                } else {
+                    this.ctx.moveTo(120, i * this.smallGridSize - 0.5);
+                }
+                if (i === 33) {
+                    this.ctx.strokeStyle = "red"
+                } else {
+                    this.ctx.strokeStyle = "black"
+                }
+                this.ctx.lineTo(this.canvasWidth, i * this.smallGridSize - 0.5);
+                this.ctx.stroke();
+                this.ctx.closePath()
+            }
+            //下部分x轴
+            for (let i = 28; i <= 38; i++) {
+                this.ctx.beginPath();
+                this.ctx.lineWidth = 1
+                this.ctx.moveTo(0, i * this.gridSizeY - 0.5);
+                this.ctx.lineTo(this.canvasWidth, i * this.gridSizeY - 0.5);
+                this.ctx.stroke();
+                this.ctx.closePath()
+            }
+            /*y方向的线*/
+            const yLineTotal = Math.floor(this.canvasWidth / this.gridSize);
+            //上部分y轴
+            for (let i = 0; i < yLineTotal; i++) {
+                if (i !== 1 && i !== 30) {
+                    this.ctx.beginPath();
+                    this.ctx.strokeStyle = "black"
+                    this.ctx.moveTo(i * this.gridSize - 0.5, 0);
+                    this.ctx.lineTo(i * this.gridSize - 0.5, 60);
+                    this.ctx.stroke();
+                    this.ctx.closePath();
+                }
+            }
+            //中间部分y轴
+            let redLine = 18//红色线条
+            let longLine = 15
+            for (let i = 0; i < 54; i++) {
+                this.ctx.beginPath();
+                if (i === redLine) {
+                    this.ctx.strokeStyle = "red"
+                    redLine += 6
+                } else {
+                    this.ctx.strokeStyle = "black"
+                }
+                //左边3列
+                if (i >= 4 && (i < 5 || i >= 8) && (i < 9 || i >= 12)) {
+                    //左边中两条竖线
+                    if (i === 4 || i === 8) {
+                        this.ctx.moveTo(i * this.smallGridSize - 0.5, 80);
+                        this.ctx.lineTo(i * this.smallGridSize - 0.5, 480);
+                    } else {
+                        if (i === longLine) {
+                            this.ctx.moveTo(i * this.smallGridSize - 0.5, 60);
+                            this.ctx.lineTo(i * this.smallGridSize - 0.5, 560);
+                            longLine += 6
+                        } else {
+                            this.ctx.moveTo(i * this.smallGridSize - 0.5, 60);
+                            this.ctx.lineTo(i * this.smallGridSize - 0.5, 540);
+                        }
+                    }
+                }
+                this.ctx.stroke();
+                this.ctx.closePath();
+            }
+            //下部分y轴
+            for (let i = 1; i < yLineTotal; i++) {
+                if (i !== 1 && i !== 10) {
+                    this.ctx.beginPath();
+                    this.ctx.strokeStyle = "black"
+                    this.ctx.moveTo(i * this.gridSize - 0.5, 540);
+                    this.ctx.lineTo(i * this.gridSize - 0.5, this.canvasHeight);
+                    this.ctx.stroke();
+                    this.ctx.closePath();
+                }
+            }
+        }
+        //呼吸、脉搏、体温折线图
+        function drawDotted(data) {
+            //呼吸x轴开始坐标
+            let breathX = 124.5
+            let breathY = 529
+            let y0 = 529
+            //记录呼吸当前坐标
+            let prevBreathX = 0
+            let prevBreathY = 0
+            //体温x轴开始坐标
+            let temperatureX = 124.5
+            let temperatureY = 2179
+            let y1 = 2179
+            let temperature = 0
+            //记录体温当前坐标
+            let preTemperatureX = 0
+            let preTemperatureY = 0
+            //脉搏x轴开始坐标
+            let pulseX = 124.5
+            let pulseY = 515
+            let y2 = 515
+            //记录脉搏当前坐标
+            let prePulseX = 0
+            let prePulseY = 0
+            //事件x轴开始坐标
+            let eventX = 119
+            //记录疼痛评分当前坐标
+            let prePainScoreX = 0
+            let prePainScoreY = 0
+            //疼痛评分x轴开始坐标
+            let painScoreX = 124.5
+            let painScoreY = 539
+            let y3 = 539
+            data.map((item, key) => {
+                let j = 0
+                for (let i = 2; i <= 22; i += 4) {
+                    //入院、出院、手术等
+                    if (item.typeDate.split(":")[0] !== "") {
+                        if (i >= parseInt(item.typeDate.split(":")[0]) && j === 0) {
+                            const date = new Date(item.date + " " + item.typeDate)
+                            this.ctx.beginPath()
+                            this.ctx.fillStyle = "red"
+                            this.ctx.font = "10px Tahoma"
+                            this.drawTextVertical(this.ctx, item.type + "于" + this.dateString(date), eventX, 81, 10, 200)
+                            this.ctx.closePath()
+                            j = 1
+                        }
+                    }
+                    item.timeInterval.map((itemTime, keyTime) => {
+                        if (i === parseInt(itemTime.time.split(":")[0])) {
+                            //呼吸曲线
+                            if (itemTime.breath !== "") {
+                                if (key === 0 && keyTime === 0) {
+                                    prevBreathX = breathX
+                                    breathY = y0 - itemTime.breath * 5;
+                                    prevBreathY = breathY
+                                } else {
+                                    breathY = y0 - itemTime.breath * 5
+                                }
+                                this.ctx.beginPath()
+                                this.ctx.strokeStyle = "blue"
+                                this.ctx.arc(breathX, breathY, 2, 0, 2 * Math.PI)
+                                this.ctx.fillStyle = "blue"
+                                this.ctx.fill()
+                                this.ctx.stroke();
+                                this.ctx.moveTo(prevBreathX, prevBreathY);
+                                this.ctx.lineTo(breathX, breathY);
+                                this.ctx.stroke();
+                                this.ctx.closePath()
+                                prevBreathX = breathX;
+                                prevBreathY = breathY;
+                            }
+                            //体温曲线
+                            if (itemTime.temperature !== "") {
+                                if (key === 0 && keyTime === 0) {
+                                    preTemperatureX = temperatureX
+                                    temperatureY = y1 - parseFloat(itemTime.temperature) * 50;
+                                    preTemperatureY = temperatureY
+                                } else {
+                                    temperatureY = y1 - (parseFloat(itemTime.temperature)) * 50
+                                }
+                                this.ctx.beginPath();
+                                this.ctx.moveTo(temperatureX - this.dottedSize / 2, temperatureY - this.dottedSize / 2);
+                                this.ctx.strokeStyle = "blue"
+                                this.ctx.lineCap = "round";
+                                this.ctx.font = "9px 宋体"
+                                this.ctx.strokeText("×", (temperatureX - 6) + this.dottedSize / 4, (temperatureY + 6) - this.dottedSize / 3, 20);
+                                this.ctx.stroke();
+                                this.ctx.moveTo(preTemperatureX, preTemperatureY);
+                                this.ctx.lineTo(temperatureX, temperatureY);
+                                this.ctx.stroke();
+                                this.ctx.closePath()
+                                preTemperatureX = temperatureX;
+                                preTemperatureY = temperatureY;
+                            }
+                            //脉搏曲线
+                            if (itemTime.pulse !== "") {
+                                if (key === 0 && keyTime === 0) {
+                                    prePulseX = pulseX
+                                    pulseY = y2 - itemTime.pulse * 1.7;
+                                    prePulseY = pulseY
+                                } else {
+                                    pulseY = y2 - itemTime.pulse * 1.7
+                                }
+                                this.ctx.beginPath()
+                                this.ctx.strokeStyle = "red"
+                                this.ctx.arc(pulseX, pulseY, 2, 0, 2 * Math.PI)
+                                this.ctx.fillStyle = "red"
+                                this.ctx.fill()
+                                this.ctx.stroke();
+                                this.ctx.moveTo(prePulseX, prePulseY);
+                                this.ctx.lineTo(pulseX, pulseY);
+                                this.ctx.stroke();
+                                this.ctx.closePath()
+                                prePulseX = pulseX;
+                                prePulseY = pulseY;
+                            }
+                            //疼痛评分
+                            if (itemTime.painScore !== 0) {
+                                if (key === 0 && keyTime === 0) {
+                                    prePainScoreX = painScoreX
+                                    painScoreY = y3 - itemTime.painScore * 5;
+                                    prePainScoreY = painScoreY
+                                } else {
+                                    painScoreY = y3 - itemTime.painScore * 5
+                                }
+                                this.ctx.beginPath()
+                                this.ctx.strokeStyle = "red"
+                                const height = 2.6;//三角形的高
+                                console.log(height)
+                                this.ctx.moveTo(painScoreX, painScoreY - height)
+                                this.ctx.lineTo(painScoreX - height, painScoreY + height)
+                                this.ctx.lineTo(painScoreX + height, painScoreY + height)
+                                this.ctx.stroke();
+                                this.ctx.fill()
+                                this.ctx.closePath()
+                                this.ctx.beginPath()
+                                this.ctx.fillStyle = "red"
+                                this.ctx.moveTo(prePainScoreX, prePainScoreY);
+                                this.ctx.lineTo(painScoreX, painScoreY);
+                                this.ctx.stroke();
+                                this.ctx.closePath()
+                                prePainScoreX = painScoreX;
+                                prePainScoreY = painScoreY;
+                            }
+                        }
+                    })
+                    temperatureX += 10
+                    breathX += 10
+                    pulseX += 10
+                    eventX += 10
+                    painScoreX += 10
+                }
+            })
+        }
+    </script>
+</body>
+
+</html>
